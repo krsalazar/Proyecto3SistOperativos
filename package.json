@@ -13,9 +13,16 @@
   "license": "ISC",
   "dependencies": {
     "@libsql/client": "^0.6.0",
+    "bcrypt": "^5.1.1",
+    "bcryptjs": "^2.4.3",
     "dotenv": "^16.4.5",
     "express": "4.19.2",
+    "express-jwt": "^8.4.1",
+    "express-session": "^1.18.0",
+    "jsonwebtoken": "^9.0.2",
     "morgan": "1.10.0",
-    "socket.io": "4.7.5"
+    "play-sound": "^1.1.6",
+    "socket.io": "4.7.5",
+    "uuid": "^9.0.1"
   }
 }

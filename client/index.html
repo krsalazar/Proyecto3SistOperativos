@@ -4,116 +4,139 @@
 <head>
     <meta name="viewport" content="width=device-width,initial-scale=1.0">
     <title>Chat en Tiempo Real</title>
+    <link rel="stylesheet" href="/style.css">
     <script type="module">
         import { io } from "https://cdn.socket.io/4.3.2/socket.io.esm.min.js";
 
-        const socket = io({
-            auth: {
-                token: "123",
-                username: "prueba",
-                serverOffSet: 0
+        let socket;
+        const audioConectado = new Audio('sonidoConectado.mp3');
+        const audioDesconectado = new Audio('sonidoIO.mp3');
+        const audioMensaje = new Audio('Sound.mp3');
+
+        audioConectado.addEventListener('canplaythrough', () => {
+            console.log('sonidoConectado.mp3 loaded');
+        });
+
+        audioDesconectado.addEventListener('canplaythrough', () => {
+            console.log('sonidoIO.mp3 loaded');
+        });
+
+        audioMensaje.addEventListener('canplaythrough', () => {
+            console.log('Sound.mp3 loaded');
+        });
+
+        const connectSocket = (username) => {
+            socket = io({
+                auth: {
+                    serverOffset: 0,
+                    username: username
+                }
+            });
+
+            socket.on("chat message", (msg, serverOffset, username) => {
+                const item = `<li>
+                    <p>${msg}</p>
+                    <small>${username}</small>
+                </li>`;
+                messages.insertAdjacentHTML("beforeend", item);
+                socket.auth.serverOffset = serverOffset;
+                messages.scrollTop = messages.scrollHeight;
+
+                if (msg.includes('se ha conectado')) {
+                    audioConectado.play();
+
+                } else if (msg.includes('se ha desconectado')) {
+                    audioDesconectado.play();
+
+                } else {
+                    console.log('Playing audioMensaje for received message');
+                    audioMensaje.play(); // Reproducir el sonido al recibir un mensaje
+                }
+            });
+
+            form.addEventListener("submit", (e) => {
+                e.preventDefault();
+
+                if (input.value) {
+                    const messages = splitMessage(input.value);
+                    messages.forEach((message) => {
+                        socket.emit("chat message", {
+                            message: message,
+                            username: username
+                        });
+                    });
+                    input.value = "";
+                    console.log('Playing audioMensaje for sent message');
+                    audioMensaje.play(); // Reproducir el sonido al enviar un mensaje
+                }
+            });
+        };
+        const splitMessage = (message, maxLength = 80) => {
+            const words = message.split(' ');
+            const messages = [];
+            let currentMessage = '';
+
+            words.forEach(word => {
+                if ((currentMessage + word).length <= maxLength) {
+                    currentMessage += word + ' ';
+
+                } else {
+                    messages.push(currentMessage.trim());
+                    currentMessage = word + ' ';
+                }
+            });
+
+            if (currentMessage.trim()) {
+                messages.push(currentMessage.trim());
+            }
+
+            return messages;
+        };
+
+        const showModal = () => {
+            const modal = document.getElementById("usernameModal");
+            const usernameInput = document.getElementById("usernameInput");
+            const usernameForm = document.getElementById("usernameForm");
+
+            modal.style.display = "block";
+
+            usernameForm.addEventListener("submit", (e) => {
+                e.preventDefault();
+                const username = usernameInput.value.trim() || "anonymous";
+                sessionStorage.setItem("username", username);
+                modal.style.display = "none";
+                connectSocket(username);
+            });
+        };
+
+        const form = document.getElementById("form");
+        const input = document.getElementById("input");
+        const messages = document.getElementById("messages");
+
+        window.addEventListener("load", () => {
+            const storedUsername = sessionStorage.getItem("username");
+            if (storedUsername) {
+                connectSocket(storedUsername);
+            } else {
+                showModal();
             }
         });
-        const form = document.getElementById("form")
-        const input = document.getElementById("input")
-        const messages = document.getElementById("messages")
-
-        socket.on("chat message", (msg, serverOffSet) => {
-            const item = `<li>${msg}</li>`;
-            messages.insertAdjacentHTML("beforeend", item)
-            socket.auth.serverOffSet = serverOffSet
-        })
-
-        form.addEventListener("submit", (e) => {
-            e.preventDefault()
-
-            if (input.value) {
-                socket.emit("chat message", input.value)
-                input.value = ""
-            }
-        })
     </script>
-    <style>
-        *,
-        *:before,
-        *:after {
-            box-sizing: border-box;
-        }
-
-        body {
-            margin: 0;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            display: grid;
-            place-content: center;
-            height: 100vh;
-            padding: 36px 36px 100px 36px;
-            grid-template-rows: 1fr;
-        }
-
-        #chat {
-            border: 1px solid #ccc;
-            border-radius: 4px;
-            overflow: hidden;
-            width: 350px;
-            height: 100%;
-            position: relative;
-        }
-
-        #form {
-            bottom: 0;
-            display: flex;
-            height: 48px;
-            left: 0;
-            padding: 4px;
-            position: absolute;
-            right: 0;
-        }
-
-        #input {
-            border-radius: 9999px;
-            border: 1px solid #eee;
-            flex: 1;
-            margin: 4px;
-            padding: 0 8px;
-        }
-
-        #input:focus {
-            outline: 0;
-        }
-
-        #form>button {
-            background: #09f;
-            color: #fff;
-            border: 0;
-            margin: 4px;
-            border-radius: 4px;
-        }
-
-        #form>button :hover {
-            background: #0af;
-        }
-
-        #messages {
-            list-style-type: none;
-            margin: 0;
-            padding: 0;
-        }
-
-        #messages>li {
-            padding: .5rem 1rem;
-        }
-
-        #messages>li:nth-child(odd) {
-            background: #efefef
-        }
-    </style>
 </head>
 
 <body>
-    <section id="chat">
-        <ul id="messages">
+    <div id="usernameModal" class="modal">
+        <div class="modal-content">
+            <form id="usernameForm">
+                <label for="usernameInput">Ingresa tu usuario:</label>
+                <input type="text" id="usernameInput" required>
+                <button type="submit">Ingresar</button>
+            </form>
+        </div>
+    </div>
 
-        </ul>
+    <section id="chat">
+        <ul id="messages"></ul>
         <form id="form" action="">
             <input id="input" autocomplete="off" /><button>Enviar</button>
         </form>
